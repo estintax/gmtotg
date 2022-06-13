@@ -6,8 +6,13 @@ if not file.Exists("gmtotg_config.json", "DATA") then
         api_url = "https://api.telegram.org",
         bot_token = "none",
         chat_id = "0",
-        msg_format = "<b>%s</b>: <i>%s</i>",
         polling = false,
+        server_start_msg = true,
+        gm_to_tg = true,
+        strings = {
+            tg_msg = "<b>%s</b>: <i>%s</i>",
+            start_msg = "🟢 <b>Server is online!</b>\nCurrent map: <code>%s</code>",
+        },
     }, true))
     f:Close()
 end
@@ -33,13 +38,27 @@ timer.Simple(0, function ()
     end
 
     is_ready = true
+
+    if config.server_start_msg then
+        http.Post(string.format("%s/bot%s/%s", config.api_url, config.bot_token, "sendMessage"), {
+            chat_id = config.chat_id,
+            text = string.format(config.strings.start_msg, game.GetMap()),
+            parse_mode = "HTML"
+        }, function (body, size, headers, code)
+            if code == 200 then
+                local data = util.JSONToTable(body)
+                if data.ok then print("GMtoTG: Sended server start message") end
+            end
+        end)
+    end
+
     if config.polling then
         util.AddNetworkString("TGtoGMColoredMsg")
         print("GMtoTG: Starting long polling")
         timer.Create("TGBotLongPolling", 2, 0, function ()
             http.Fetch(string.format("%s/bot%s/%s?offset=%d", config.api_url, config.bot_token, "getUpdates", update_id), function (body, size, headers, code)
                 if code == 200 then
-                    data = util.JSONToTable(body)
+                    local data = util.JSONToTable(body)
                     if data.ok == true and #data.result ~= 0 then
                         update_id = data.result[#data.result].update_id+1
                         for i,update in pairs(data.result) do
@@ -73,6 +92,7 @@ end)
 gameevent.Listen("player_say")
 hook.Add("player_say", "GMtoTGChat", function (data)
     if not is_ready then return nil end
+    if not config.gm_to_tg then return nil end
     if string.sub(data.text, 1, 1) == "!" then return nil end
     local p = Player(data.userid)
     local nickname = p:Nick()
@@ -82,7 +102,7 @@ hook.Add("player_say", "GMtoTGChat", function (data)
     msg = string.Replace(msg, "&", "&amp;")
     http.Post(string.format("%s/bot%s/%s", config.api_url, config.bot_token, "sendMessage"), {
         chat_id = config.chat_id,
-        text = string.format(config.msg_format, nickname, msg),
+        text = string.format(config.strings.tg_msg, nickname, msg),
         parse_mode = "HTML"
     }, function (body, size, headers, code)
     end, function (err)
