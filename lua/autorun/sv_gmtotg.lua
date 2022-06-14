@@ -12,7 +12,10 @@ if not file.Exists("gmtotg_config.json", "DATA") then
         strings = {
             tg_msg = "<b>%s</b>: <i>%s</i>",
             start_msg = "🟢 <b>Server is online!</b>\nCurrent map: <code>%s</code>",
+            join_msg = "🟢 <b>%s</b> is joining the game",
+            part_msg = "🔴 <b>%s</b> left the game <i>(%s)</i>",
         },
+        join_part_msg = false,
     }, true))
     f:Close()
 end
@@ -85,7 +88,6 @@ timer.Simple(0, function ()
                 end
             end)
         end)
-        print("GMtoTG: Working")
     end
 end)
 
@@ -108,4 +110,26 @@ hook.Add("player_say", "GMtoTGChat", function (data)
     end, function (err)
         print("failed to send message to telegram: " .. err)
     end)
+end)
+
+gameevent.Listen("player_connect")
+hook.Add("player_connect", "GMtoTGJoinUser", function (data)
+    if config.join_part_msg and config.strings.join_msg then
+        http.Post(string.format("%s/bot%s/%s", config.api_url, config.bot_token, "sendMessage"), {
+            chat_id = config.chat_id,
+            text = string.format(config.strings.join_msg, data.name),
+            parse_mode = "HTML"
+        })
+    end
+end)
+
+gameevent.Listen("player_disconnect")
+hook.Add("player_disconnect", "GMtoTGPartUser", function (data)
+    if config.join_part_msg and config.strings.part_msg then
+        http.Post(string.format("%s/bot%s/%s", config.api_url, config.bot_token, "sendMessage"), {
+            chat_id = config.chat_id,
+            text = string.format(config.strings.part_msg, data.name, data.reason),
+            parse_mode = "HTML"
+        })
+    end
 end)
