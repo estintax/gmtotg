@@ -62,7 +62,7 @@ timer.Simple(0, function ()
                     if data.ok == true and #data.result ~= 0 then
                         update_id = data.result[#data.result].update_id+1
                         for i,update in pairs(data.result) do
-                            if update.message and update.message.text then
+                            if update.message and update.message.text and tostring(update.message.chat.id) == config.chat_id then
                                 local username = update.message.from.first_name
                                 if update.message.from.last_name then
                                     username = username .. " " .. update.message.from.last_name
