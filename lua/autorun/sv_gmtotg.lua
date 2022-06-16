@@ -28,6 +28,8 @@ end
 
 local is_ready = false
 local update_id = 0
+local is_first_poll_request = true
+local last_message_text = ""
 
 timer.Simple(0, function ()
     print("GMtoTG (C) 2022 SE Maksim Pinigin")
@@ -58,30 +60,33 @@ timer.Simple(0, function ()
     if config.polling then
         util.AddNetworkString("TGtoGMColoredMsg")
         print("GMtoTG: Starting long polling")
-        timer.Create("TGBotLongPolling", 2, 0, function ()
+        timer.Create("TGBotLongPolling", 1, 0, function ()
             http.Fetch(string.format("%s/bot%s/%s?offset=%d", config.api_url, config.bot_token, "getUpdates", update_id), function (body, size, headers, code)
                 if code == 200 then
                     local data = util.JSONToTable(body)
                     if data.ok == true and #data.result ~= 0 then
                         update_id = data.result[#data.result].update_id+1
+                        if is_first_poll_request then
+                            is_first_poll_request = false
+                            return nil
+                        end
                         for i,update in pairs(data.result) do
                             if update.message and update.message.text and tostring(update.message.chat.id) == config.chat_id then
+                                if update.message.text == last_message_text then continue end
                                 local username = update.message.from.first_name
                                 if update.message.from.last_name then
                                     username = username .. " " .. update.message.from.last_name
                                 end
+                                last_message_text = update.message.text
                                 print(string.format("[TG] %s: %s", username, update.message.text))
-                                local players = player.GetAll()
-                                for i,ply in pairs(players) do
-                                    net.Start("TGtoGMColoredMsg")
-                                    net.WriteTable(Color(42, 171, 238, 255))
-                                    net.WriteString("[TG] ")
-                                    net.WriteTable(Color(255, 255, 255, 255))
-                                    net.WriteString(username .. ": ")
-                                    net.WriteTable(Color(185, 185, 185, 255))
-                                    net.WriteString(update.message.text)
-                                    net.Send(ply)
-                                end
+                                net.Start("TGtoGMColoredMsg")
+                                net.WriteTable(Color(42, 171, 238, 255))
+                                net.WriteString("[TG] ")
+                                net.WriteTable(Color(255, 255, 255, 255))
+                                net.WriteString(username .. ": ")
+                                net.WriteTable(Color(185, 185, 185, 255))
+                                net.WriteString(update.message.text)
+                                net.Broadcast()
                             end
                         end
                     end
