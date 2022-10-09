@@ -43,6 +43,7 @@ timer.Simple(0, function ()
     end
 
     is_ready = true
+    util.AddNetworkString("TGtoGMEasyChatTrigger")
 
     if config.server_start_msg then
         http.Post(string.format("%s/bot%s/%s", config.api_url, config.bot_token, "sendMessage"), {
@@ -100,6 +101,7 @@ gameevent.Listen("player_say")
 hook.Add("player_say", "GMtoTGChat", function (data)
     if not is_ready then return nil end
     if not config.gm_to_tg then return nil end
+    if data.userid == 0 then return nil end
     if string.sub(data.text, 1, 1) == "!" then return nil end
     local p = Player(data.userid)
     local nickname = p:Nick()
@@ -137,4 +139,20 @@ hook.Add("player_disconnect", "GMtoTGPartUser", function (data)
             parse_mode = "HTML"
         })
     end
+end)
+
+net.Receive("TGtoGMEasyChatTrigger", function (len, ply)
+    if not is_ready then return nil end
+    if not config.gm_to_tg then return nil end
+    local msg = net.ReadString()
+    if string.sub(msg, 1, 1) == "!" then return nil end
+    local nickname = ply:Nick()
+    http.Post(string.format("%s/bot%s/%s", config.api_url, config.bot_token, "sendMessage"), {
+        chat_id = config.chat_id,
+        text = string.format(config.strings.tg_msg, nickname, msg),
+        parse_mode = "HTML"
+    }, function (body, size, headers, code)
+    end, function (err)
+        print("failed to send message to telegram: " .. err)
+    end)
 end)
