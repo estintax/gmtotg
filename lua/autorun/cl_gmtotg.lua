@@ -1,4 +1,5 @@
 if not CLIENT then return end
+
 net.Receive("TGtoGMColoredMsg", function ()
     local colors = {}
     local strings = {}
@@ -9,4 +10,14 @@ net.Receive("TGtoGMColoredMsg", function ()
     colors[3] = net.ReadTable()
     strings[3] = net.ReadString()
     chat.AddText(colors[1], strings[1], colors[2], strings[2], colors[3], strings[3])
+end)
+
+hook.Add("ECShouldSendMessage", "GMtoTGEasyChatMessage", function (msg)
+    if string.sub(msg, 1, 1) ~= "!" then
+        net.Start("TGtoGMEasyChatTrigger")
+        net.WriteString(msg)
+        net.SendToServer()
+    end
+
+    return true
 end)
